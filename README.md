@@ -1,4 +1,4 @@
-# Collector — Mini-projet Go
+# Collector — Mini-TP Go
 
 Un collecteur de données qui récupère des produits via une API publique ([dummyjson.com](https://dummyjson.com)), valide la qualité des données, et les stocke dans PostgreSQL via un **UPSERT**.
 
@@ -127,3 +127,4 @@ PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector \
 | `make run`     | Lancer le collector                   |
 | `make test`    | Lancer `go test ./...`                |
 | `make lint`    | Lancer `golangci-lint` (optionnel)    |
+
