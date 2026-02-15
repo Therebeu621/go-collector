@@ -1,0 +1,31 @@
+# Binaries
+collector
+cmd/collector/collector
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (ne jamais commit de vraies credentials)
+.env
+.env.local
