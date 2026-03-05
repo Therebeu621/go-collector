@@ -1,6 +1,6 @@
-# Collector — Pipeline de données Go
+# Collector — Pipeline de données Go (orienté production)
 
-Un collecteur de données production-ready écrit en Go qui récupère des produits depuis une API publique ([dummyjson.com](https://dummyjson.com)), valide la qualité des données, et les stocke dans PostgreSQL avec des upserts idempotents basés sur un checksum.
+Un collecteur de données écrit en Go qui récupère des produits depuis une API publique ([dummyjson.com](https://dummyjson.com)), valide la qualité des données, et les stocke dans PostgreSQL avec des upserts idempotents basés sur un checksum.
 
 ## Fonctionnalités
 
@@ -15,7 +15,13 @@ Un collecteur de données production-ready écrit en Go qui récupère des produ
 - **Sink ClickHouse optionnel** — export batch des produits vers ClickHouse si `CLICKHOUSE_DSN` est défini
 - **Support proxy** — standard `HTTP_PROXY`/`HTTPS_PROXY` via `http.ProxyFromEnvironment`
 - **Dockerisé** — build multi-stage, certificats CA, utilisateur non-root
-- **CI/CD** — GitHub Actions avec `golangci-lint`, `go test -race`, `go vet`
+- **CI** — GitHub Actions avec `golangci-lint`, `go test -race`, `go vet`
+
+## Positionnement du projet
+
+Ce projet est un **mini pipeline data orienté production** : il montre des patterns solides (fiabilité HTTP, idempotence, observabilité, CI, containerisation).
+
+Il ne prétend pas couvrir tout un contexte enterprise (multi-environnements, gestion avancée des secrets, haute disponibilité, SLO/SLA, etc.).
 
 ## Architecture
 
@@ -36,7 +42,7 @@ Un collecteur de données production-ready écrit en Go qui récupère des produ
 │   ├── 001_init.sql               # Table products
 │   └── 002_quality.sql            # Colonnes checksum + qualité
 ├── Dockerfile                     # Multi-stage (golang → alpine)
-├── docker-compose.yml             # Services Postgres + collector
+├── docker-compose.yml             # Services Postgres + ClickHouse + collector
 ├── .github/workflows/ci.yml       # Pipeline CI lint + test
 ├── .env.example                   # Variables d'env documentées
 ├── Makefile                       # Raccourcis dev
@@ -46,7 +52,7 @@ Un collecteur de données production-ready écrit en Go qui récupère des produ
 ## Prérequis
 
 - **Go** ≥ 1.24
-- **Docker** & **Docker Compose** (v2)
+- **Docker** + Docker Compose (`docker compose` v2 ou `docker-compose` v1)
 - **psql** (client PostgreSQL)
 
 ## Démarrage rapide
@@ -77,6 +83,12 @@ make down
 
 ```bash
 docker compose up --build
+```
+
+Si `docker compose` n'est pas disponible (plugin v2 absent), utilise `docker-compose`:
+
+```bash
+docker-compose up --build
 ```
 
 ## Variables d'environnement
@@ -134,6 +146,33 @@ go test ./... -race -v -count=1
 # Couverture
 go test ./... -coverprofile=coverage.out
 go tool cover -func=coverage.out
+```
+
+## Validation ClickHouse (E2E)
+
+```bash
+# Nettoyage
+docker rm -f collector-pg collector-ch collector-app 2>/dev/null || true
+docker volume rm testgo_ch_data 2>/dev/null || true
+
+# Postgres (recommande via Makefile, plus stable avec docker-compose v1)
+make up
+sleep 3
+make migrate
+
+# ClickHouse
+docker-compose up -d clickhouse
+sleep 5
+
+# Verifications infra
+PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector -c "select 1;"
+curl -u collector:collector http://localhost:8123/ping
+
+# Run collector avec export analytics
+CLICKHOUSE_DSN=http://collector:collector@localhost:8123/default make run
+
+# Verifier le nombre de lignes exportees
+curl -u collector:collector "http://localhost:8123/?query=SELECT%20count()%20FROM%20default.product_prices"
 ```
 
 ## Commandes Makefile
