@@ -152,18 +152,3 @@ go tool cover -func=coverage.out
 PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector \
   -c "SELECT id, title, price, quality_status, checksum FROM products ORDER BY id LIMIT 5;"
 ```
-<<<<<<< HEAD
-
-## Commandes Makefile
-
-| Commande       | Description                           |
-|----------------|---------------------------------------|
-| `make up`      | Démarrer Postgres                     |
-| `make down`    | Arrêter Postgres                      |
-| `make migrate` | Appliquer la migration SQL            |
-| `make run`     | Lancer le collector                   |
-| `make test`    | Lancer `go test ./...`                |
-| `make lint`    | Lancer `golangci-lint` (optionnel)    |
-
-=======
->>>>>>> 0fa1ab5 (feat: corrige la sémantique de LIMIT et ajoute PAGE_SIZE pour la pagination)
