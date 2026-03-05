@@ -3,8 +3,9 @@
 # DSN par défaut pour le dev local
 DATABASE_URL ?= postgres://collector:collector@localhost:5434/collector?sslmode=disable
 
-## Démarrer Postgres (sans docker-compose pour éviter les bugs v1)
+## Démarrer Postgres (idempotent : supprime l'ancien container si existant)
 up:
+	@docker rm -f collector-pg 2>/dev/null || true
 	docker run -d --name collector-pg \
 		-e POSTGRES_USER=collector \
 		-e POSTGRES_PASSWORD=collector \

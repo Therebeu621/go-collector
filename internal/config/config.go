@@ -19,6 +19,7 @@ type Config struct {
 	LogLevel       string        // env: LOG_LEVEL (default: "info")
 	LogFormat      string        // env: LOG_FORMAT (default: "json", alt: "pretty")
 	APIBaseURL     string        // env: API_BASE_URL (default: "https://dummyjson.com/products")
+	MetricsAddr    string        // env: METRICS_ADDR (default: ":9090")
 }
 
 // Load reads configuration from environment variables, applies defaults,
@@ -34,6 +35,7 @@ func Load() (Config, error) {
 		LogLevel:       "info",
 		LogFormat:      "json",
 		APIBaseURL:     "https://dummyjson.com/products",
+		MetricsAddr:    ":9090",
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -93,6 +95,10 @@ func Load() (Config, error) {
 
 	if v := os.Getenv("API_BASE_URL"); v != "" {
 		cfg.APIBaseURL = v
+	}
+
+	if v := os.Getenv("METRICS_ADDR"); v != "" {
+		cfg.MetricsAddr = v
 	}
 
 	return cfg, nil

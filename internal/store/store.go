@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/anisse/collector/internal/metrics"
 	"github.com/anisse/collector/internal/model"
 )
 
@@ -28,13 +29,14 @@ type Stats struct {
 
 // Store wraps the database connection and logger for product operations.
 type Store struct {
-	db     *sql.DB
-	logger zerolog.Logger
+	db      *sql.DB
+	logger  zerolog.Logger
+	metrics *metrics.Metrics // optional, may be nil
 }
 
 // New creates a Store.
-func New(db *sql.DB, logger zerolog.Logger) *Store {
-	return &Store{db: db, logger: logger}
+func New(db *sql.DB, logger zerolog.Logger, m *metrics.Metrics) *Store {
+	return &Store{db: db, logger: logger, metrics: m}
 }
 
 // UpsertProducts validates each product and upserts valid ones into PostgreSQL.
@@ -83,12 +85,19 @@ func (s *Store) UpsertProducts(ctx context.Context, products []model.Product) (S
 				Strs("reasons", reasons).
 				Msg("product skipped (validation failed)")
 			stats.Skipped++
+			if s.metrics != nil {
+				s.metrics.ProductsSkipped.Inc()
+			}
 			continue
 		}
 
 		qualityStatus := "ok"
 		if len(reasons) > 0 {
 			qualityStatus = "warn"
+		}
+		// Ensure non-nil so pgx sends '{}' instead of NULL.
+		if reasons == nil {
+			reasons = []string{}
 		}
 
 		checksum := computeChecksum(p)
@@ -102,6 +111,9 @@ func (s *Store) UpsertProducts(ctx context.Context, products []model.Product) (S
 		if err == sql.ErrNoRows {
 			// Checksum unchanged — product skipped by WHERE clause.
 			stats.Skipped++
+			if s.metrics != nil {
+				s.metrics.ProductsSkipped.Inc()
+			}
 			s.logger.Debug().
 				Int("product_id", p.ID).
 				Msg("product unchanged (checksum match)")
@@ -113,8 +125,14 @@ func (s *Store) UpsertProducts(ctx context.Context, products []model.Product) (S
 
 		if isInsert {
 			stats.Inserted++
+			if s.metrics != nil {
+				s.metrics.ProductsInserted.Inc()
+			}
 		} else {
 			stats.Updated++
+			if s.metrics != nil {
+				s.metrics.ProductsUpdated.Inc()
+			}
 		}
 	}
 

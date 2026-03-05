@@ -11,6 +11,7 @@ Un collecteur de données production-ready écrit en Go qui récupère des produ
 - **Contrôle qualité** — règles de validation avec `quality_status` (ok/warn) et raisons
 - **Logs structurés** — sortie JSON via `zerolog` (mode pretty pour le dev local)
 - **Arrêt gracieux** — `SIGINT`/`SIGTERM` annule proprement le travail en cours
+- **Daemon Metrics** — le processus reste en vie après la collecte (daemon) pour être scrapé par Prometheus
 - **Support proxy** — standard `HTTP_PROXY`/`HTTPS_PROXY` via `http.ProxyFromEnvironment`
 - **Dockerisé** — build multi-stage, certificats CA, utilisateur non-root
 - **CI/CD** — GitHub Actions avec `golangci-lint`, `go test -race`, `go vet`
@@ -63,10 +64,10 @@ make up
 # 2. Appliquer les migrations
 make migrate
 
-# 3. Lancer le collector
+# 3. Lancer le collector (reste en vie pour les métriques)
 make run
 
-# 4. Arrêter Postgres
+# 4. Arrêter Postgres (dans un autre terminal ou après un Ctrl+C)
 make down
 ```
 
@@ -91,6 +92,7 @@ docker compose up --build
 | `API_BASE_URL` | ❌ | `https://dummyjson.com/products` | Endpoint API |
 | `HTTP_PROXY` | ❌ | — | URL du proxy HTTP |
 | `HTTPS_PROXY` | ❌ | — | URL du proxy HTTPS |
+| `METRICS_ADDR` | ❌ | `:9090` | Adresse du serveur de métriques Prometheus |
 
 ## Exemple de sortie
 

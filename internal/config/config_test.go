@@ -15,7 +15,7 @@ func TestLoad_Defaults(t *testing.T) {
 	setEnv(t, "DATABASE_URL", "postgres://test:test@localhost/test")
 
 	// Clear optional vars to test defaults.
-	for _, k := range []string{"LIMIT", "PAGE_SIZE", "WORKERS", "RATE_LIMIT", "REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FORMAT", "API_BASE_URL"} {
+	for _, k := range []string{"LIMIT", "PAGE_SIZE", "WORKERS", "RATE_LIMIT", "REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FORMAT", "API_BASE_URL", "METRICS_ADDR"} {
 		os.Unsetenv(k)
 	}
 
@@ -47,6 +47,9 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.APIBaseURL != "https://dummyjson.com/products" {
 		t.Errorf("APIBaseURL = %q, want default", cfg.APIBaseURL)
+	}
+	if cfg.MetricsAddr != ":9090" {
+		t.Errorf("MetricsAddr = %q, want :9090", cfg.MetricsAddr)
 	}
 }
 

@@ -64,7 +64,7 @@ func TestFetchAll_SinglePage(t *testing.T) {
 	defer ts.Close()
 
 	// maxProducts=10 (want at most 10), pageSize=10, 2 workers
-	client := NewClient(ts.URL, 10, 10, 2, 100, ts.Client(), newTestLogger())
+	client := NewClient(ts.URL, 10, 10, 2, 100, ts.Client(), newTestLogger(), nil)
 
 	products, err := client.FetchAll(context.Background())
 	if err != nil {
@@ -81,7 +81,7 @@ func TestFetchAll_Pagination(t *testing.T) {
 	defer ts.Close()
 
 	// maxProducts=25 (want all), pageSize=10, 3 workers
-	client := NewClient(ts.URL, 25, 10, 3, 100, ts.Client(), newTestLogger())
+	client := NewClient(ts.URL, 25, 10, 3, 100, ts.Client(), newTestLogger(), nil)
 
 	products, err := client.FetchAll(context.Background())
 	if err != nil {
@@ -121,7 +121,7 @@ func TestFetchAll_RetryOn429(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := NewClient(ts.URL, 10, 10, 1, 100, ts.Client(), newTestLogger())
+	client := NewClient(ts.URL, 10, 10, 1, 100, ts.Client(), newTestLogger(), nil)
 
 	products, err := client.FetchAll(context.Background())
 	if err != nil {
@@ -147,7 +147,7 @@ func TestFetchAll_ContextCancelled(t *testing.T) {
 	defer cancel()
 
 	httpClient := &http.Client{Timeout: 1 * time.Second}
-	client := NewClient(ts.URL, 10, 10, 1, 100, httpClient, newTestLogger())
+	client := NewClient(ts.URL, 10, 10, 1, 100, httpClient, newTestLogger(), nil)
 
 	_, err := client.FetchAll(ctx)
 	if err == nil {
@@ -162,7 +162,7 @@ func TestFetchAll_MalformedJSON(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := NewClient(ts.URL, 10, 10, 1, 100, ts.Client(), newTestLogger())
+	client := NewClient(ts.URL, 10, 10, 1, 100, ts.Client(), newTestLogger(), nil)
 
 	_, err := client.FetchAll(context.Background())
 	if err == nil {
@@ -176,7 +176,7 @@ func TestFetchAll_NonRetriableError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := NewClient(ts.URL, 10, 10, 1, 100, ts.Client(), newTestLogger())
+	client := NewClient(ts.URL, 10, 10, 1, 100, ts.Client(), newTestLogger(), nil)
 
 	_, err := client.FetchAll(context.Background())
 	if err == nil {
@@ -190,7 +190,7 @@ func TestFetchAll_LimitCapsProducts(t *testing.T) {
 	defer ts.Close()
 
 	// maxProducts=15, pageSize=10 => fetches 2 pages but caps at 15.
-	client := NewClient(ts.URL, 15, 10, 2, 100, ts.Client(), newTestLogger())
+	client := NewClient(ts.URL, 15, 10, 2, 100, ts.Client(), newTestLogger(), nil)
 
 	products, err := client.FetchAll(context.Background())
 	if err != nil {

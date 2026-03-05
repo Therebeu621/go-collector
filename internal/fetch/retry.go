@@ -45,6 +45,9 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 		if err != nil {
 			if isRetriableError(err) {
 				lastErr = err
+				if c.metrics != nil {
+					c.metrics.HTTPRetries.Inc()
+				}
 				continue
 			}
 			return nil, fmt.Errorf("executing %s %s: %w", req.Method, req.URL, err)
@@ -61,6 +64,9 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 
 		if isRetriableStatus(resp.StatusCode) {
 			lastErr = fmt.Errorf("HTTP %d from %s", resp.StatusCode, req.URL)
+			if c.metrics != nil {
+				c.metrics.HTTPRetries.Inc()
+			}
 			continue
 		}
 

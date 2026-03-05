@@ -1,6 +1,6 @@
 # Binaries
-collector
-cmd/collector/collector
+/collector
+/cmd/collector/collector
 
 # Go build artifacts
 *.exe

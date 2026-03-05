@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
+	"github.com/anisse/collector/internal/metrics"
 	"github.com/anisse/collector/internal/model"
 )
 
@@ -38,13 +41,14 @@ type Client struct {
 	client      *http.Client
 	limiter     *rate.Limiter
 	logger      zerolog.Logger
+	metrics     *metrics.Metrics // optional, may be nil
 }
 
 // NewClient creates a fetch Client. The http.Client should be pre-configured
 // with timeouts and proxy settings by the caller.
 // maxProducts is the total number of products to return (LIMIT).
 // pageSize is the number of products per API page (PAGE_SIZE).
-func NewClient(baseURL string, maxProducts, pageSize, workers, ratePerSec int, httpClient *http.Client, logger zerolog.Logger) *Client {
+func NewClient(baseURL string, maxProducts, pageSize, workers, ratePerSec int, httpClient *http.Client, logger zerolog.Logger, m *metrics.Metrics) *Client {
 	return &Client{
 		baseURL:     baseURL,
 		maxProducts: maxProducts,
@@ -53,6 +57,7 @@ func NewClient(baseURL string, maxProducts, pageSize, workers, ratePerSec int, h
 		client:      httpClient,
 		limiter:     rate.NewLimiter(rate.Limit(ratePerSec), 1),
 		logger:      logger,
+		metrics:     m,
 	}
 }
 
@@ -159,11 +164,18 @@ func (c *Client) fetchPage(ctx context.Context, skip, limit int) ([]model.Produc
 		return nil, 0, fmt.Errorf("creating request: %w", err)
 	}
 
+	start := time.Now()
+
 	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer resp.Body.Close()
+
+	// Record HTTP request duration.
+	if c.metrics != nil {
+		c.metrics.HTTPRequestDuration.WithLabelValues(strconv.Itoa(resp.StatusCode)).Observe(time.Since(start).Seconds())
+	}
 
 	var apiResp model.APIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
