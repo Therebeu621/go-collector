@@ -29,6 +29,34 @@ services:
     volumes:
       - ch_data:/var/lib/clickhouse
 
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: collector-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=72h
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    container_name: collector-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+
   collector:
     build: .
     container_name: collector-app
@@ -42,6 +70,8 @@ services:
       postgres:
         condition: service_healthy
       clickhouse:
+        condition: service_started
+      prometheus:
         condition: service_started
 
 volumes:

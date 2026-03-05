@@ -12,6 +12,7 @@ Un collecteur de données écrit en Go qui récupère des produits depuis une AP
 - **Logs structurés** — sortie JSON via `zerolog` (mode pretty pour le dev local)
 - **Arrêt gracieux** — `SIGINT`/`SIGTERM` annule proprement le travail en cours
 - **Métriques Prometheus** — endpoint `/metrics` exposé sur `METRICS_ADDR`
+- **Dashboard Grafana auto-provisionné** — datasource + dashboard importés automatiquement au démarrage
 - **Sink ClickHouse optionnel** — export batch des produits vers ClickHouse si `CLICKHOUSE_DSN` est défini
 - **Support proxy** — standard `HTTP_PROXY`/`HTTPS_PROXY` via `http.ProxyFromEnvironment`
 - **Dockerisé** — build multi-stage, certificats CA, utilisateur non-root
@@ -42,7 +43,10 @@ Il ne prétend pas couvrir tout un contexte enterprise (multi-environnements, ge
 │   ├── 001_init.sql               # Table products
 │   └── 002_quality.sql            # Colonnes checksum + qualité
 ├── Dockerfile                     # Multi-stage (golang → alpine)
-├── docker-compose.yml             # Services Postgres + ClickHouse + collector
+├── docker-compose.yml             # Services Postgres + ClickHouse + collector + observabilité
+├── monitoring/
+│   ├── prometheus/prometheus.yml  # Jobs de scrape Prometheus
+│   └── grafana/                   # Provisioning datasource + dashboard
 ├── .github/workflows/ci.yml       # Pipeline CI lint + test
 ├── .env.example                   # Variables d'env documentées
 ├── Makefile                       # Raccourcis dev
@@ -90,6 +94,24 @@ Si `docker compose` n'est pas disponible (plugin v2 absent), utilise `docker-com
 ```bash
 docker-compose up --build
 ```
+
+## Observabilité (Prometheus + Grafana)
+
+```bash
+# Avec docker-compose v1 (par défaut du Makefile)
+make observability-up
+
+# Si besoin, forcer docker compose v2
+make observability-up COMPOSE="docker compose"
+```
+
+Endpoints :
+- Prometheus : `http://localhost:9091`
+- Grafana : `http://localhost:3000` (login par défaut `admin` / `admin`)
+- Credentials Grafana personnalisables via `.env` : `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
+
+Dashboard provisionné :
+- `Collector Overview` (folder `Collector`)
 
 ## Variables d'environnement
 
@@ -189,6 +211,14 @@ curl -u collector:collector "http://localhost:8123/?query=SELECT%20count()%20FRO
 | `make demo` | Commande unique : up + migrate + run |
 | `make docker-build` | Construire l'image Docker |
 | `make ci-local` | Lancer lint + vet + test en local |
+| `make observability-up` | Démarrer Prometheus + Grafana |
+| `make observability-down` | Supprimer Prometheus + Grafana |
+
+Pour utiliser `docker compose` v2 avec ces targets :
+
+```bash
+make observability-up COMPOSE="docker compose"
+```
 
 ## Vérifier les données
 

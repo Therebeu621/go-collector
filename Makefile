@@ -1,4 +1,6 @@
-.PHONY: run test lint migrate up down demo docker-build ci-local
+.PHONY: run test lint migrate up down demo docker-build ci-local observability-up observability-down
+
+COMPOSE ?= docker-compose
 
 # DSN par défaut pour le dev local
 DATABASE_URL ?= postgres://collector:collector@localhost:5434/collector?sslmode=disable
@@ -51,3 +53,11 @@ demo: up
 
 ## CI local: lint + vet + test
 ci-local: lint vet test
+
+## Start observability stack (Prometheus + Grafana)
+observability-up:
+	$(COMPOSE) up -d prometheus grafana
+
+## Stop observability stack
+observability-down:
+	$(COMPOSE) rm -sf prometheus grafana
