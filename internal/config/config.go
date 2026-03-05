@@ -20,6 +20,7 @@ type Config struct {
 	LogFormat      string        // env: LOG_FORMAT (default: "json", alt: "pretty")
 	APIBaseURL     string        // env: API_BASE_URL (default: "https://dummyjson.com/products")
 	MetricsAddr    string        // env: METRICS_ADDR (default: ":9090")
+	ClickHouseDSN  string        // env: CLICKHOUSE_DSN (optional, HTTP DSN)
 }
 
 // Load reads configuration from environment variables, applies defaults,
@@ -36,6 +37,7 @@ func Load() (Config, error) {
 		LogFormat:      "json",
 		APIBaseURL:     "https://dummyjson.com/products",
 		MetricsAddr:    ":9090",
+		ClickHouseDSN:  "",
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -99,6 +101,10 @@ func Load() (Config, error) {
 
 	if v := os.Getenv("METRICS_ADDR"); v != "" {
 		cfg.MetricsAddr = v
+	}
+
+	if v := os.Getenv("CLICKHOUSE_DSN"); v != "" {
+		cfg.ClickHouseDSN = v
 	}
 
 	return cfg, nil

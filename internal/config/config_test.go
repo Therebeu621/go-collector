@@ -15,7 +15,7 @@ func TestLoad_Defaults(t *testing.T) {
 	setEnv(t, "DATABASE_URL", "postgres://test:test@localhost/test")
 
 	// Clear optional vars to test defaults.
-	for _, k := range []string{"LIMIT", "PAGE_SIZE", "WORKERS", "RATE_LIMIT", "REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FORMAT", "API_BASE_URL", "METRICS_ADDR"} {
+	for _, k := range []string{"LIMIT", "PAGE_SIZE", "WORKERS", "RATE_LIMIT", "REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FORMAT", "API_BASE_URL", "METRICS_ADDR", "CLICKHOUSE_DSN"} {
 		os.Unsetenv(k)
 	}
 
@@ -50,6 +50,9 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.MetricsAddr != ":9090" {
 		t.Errorf("MetricsAddr = %q, want :9090", cfg.MetricsAddr)
+	}
+	if cfg.ClickHouseDSN != "" {
+		t.Errorf("ClickHouseDSN = %q, want empty", cfg.ClickHouseDSN)
 	}
 }
 
@@ -148,6 +151,7 @@ func TestLoad_CustomValues(t *testing.T) {
 	setEnv(t, "LOG_LEVEL", "debug")
 	setEnv(t, "LOG_FORMAT", "pretty")
 	setEnv(t, "API_BASE_URL", "https://api.example.com/products")
+	setEnv(t, "CLICKHOUSE_DSN", "http://default:@localhost:8123/default")
 
 	cfg, err := Load()
 	if err != nil {
@@ -180,6 +184,9 @@ func TestLoad_CustomValues(t *testing.T) {
 	}
 	if cfg.APIBaseURL != "https://api.example.com/products" {
 		t.Errorf("APIBaseURL = %q", cfg.APIBaseURL)
+	}
+	if cfg.ClickHouseDSN != "http://default:@localhost:8123/default" {
+		t.Errorf("ClickHouseDSN = %q", cfg.ClickHouseDSN)
 	}
 }
 

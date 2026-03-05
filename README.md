@@ -11,7 +11,8 @@ Un collecteur de données production-ready écrit en Go qui récupère des produ
 - **Contrôle qualité** — règles de validation avec `quality_status` (ok/warn) et raisons
 - **Logs structurés** — sortie JSON via `zerolog` (mode pretty pour le dev local)
 - **Arrêt gracieux** — `SIGINT`/`SIGTERM` annule proprement le travail en cours
-- **Daemon Metrics** — le processus reste en vie après la collecte (daemon) pour être scrapé par Prometheus
+- **Métriques Prometheus** — endpoint `/metrics` exposé sur `METRICS_ADDR`
+- **Sink ClickHouse optionnel** — export batch des produits vers ClickHouse si `CLICKHOUSE_DSN` est défini
 - **Support proxy** — standard `HTTP_PROXY`/`HTTPS_PROXY` via `http.ProxyFromEnvironment`
 - **Dockerisé** — build multi-stage, certificats CA, utilisateur non-root
 - **CI/CD** — GitHub Actions avec `golangci-lint`, `go test -race`, `go vet`
@@ -29,7 +30,8 @@ Un collecteur de données production-ready écrit en Go qui récupère des produ
 │   │   └── retry.go               # Backoff exponentiel + jitter + classification d'erreurs
 │   ├── db/db.go                   # Connexion PostgreSQL (pgx)
 │   ├── model/model.go             # Structs Product + APIResponse
-│   └── store/store.go             # Validation + checksum + UPSERT transactionnel
+│   ├── store/store.go             # Validation + checksum + UPSERT transactionnel
+│   └── analytics/clickhouse.go    # Export optionnel vers ClickHouse (HTTP)
 ├── migrations/
 │   ├── 001_init.sql               # Table products
 │   └── 002_quality.sql            # Colonnes checksum + qualité
@@ -64,10 +66,10 @@ make up
 # 2. Appliquer les migrations
 make migrate
 
-# 3. Lancer le collector (reste en vie pour les métriques)
+# 3. Lancer le collector
 make run
 
-# 4. Arrêter Postgres (dans un autre terminal ou après un Ctrl+C)
+# 4. Arrêter Postgres
 make down
 ```
 
@@ -93,6 +95,7 @@ docker compose up --build
 | `HTTP_PROXY` | ❌ | — | URL du proxy HTTP |
 | `HTTPS_PROXY` | ❌ | — | URL du proxy HTTPS |
 | `METRICS_ADDR` | ❌ | `:9090` | Adresse du serveur de métriques Prometheus |
+| `CLICKHOUSE_DSN` | ❌ | — | DSN HTTP ClickHouse (ex: `http://collector:collector@localhost:8123/default`) |
 
 ## Exemple de sortie
 

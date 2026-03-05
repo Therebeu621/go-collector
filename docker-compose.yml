@@ -16,17 +16,34 @@ services:
       timeout: 3s
       retries: 5
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: collector-ch
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: collector
+      CLICKHOUSE_PASSWORD: collector
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ch_data:/var/lib/clickhouse
+
   collector:
     build: .
     container_name: collector-app
     environment:
       DATABASE_URL: postgres://collector:collector@postgres:5432/collector?sslmode=disable
+      CLICKHOUSE_DSN: http://collector:collector@clickhouse:8123/default
       LOG_FORMAT: json
       WORKERS: "4"
       RATE_LIMIT: "5"
     depends_on:
       postgres:
         condition: service_healthy
+      clickhouse:
+        condition: service_started
 
 volumes:
   pg_data:
+  ch_data:

@@ -10,11 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anisse/collector/internal/analytics"
 	"github.com/anisse/collector/internal/config"
 	"github.com/anisse/collector/internal/db"
 	"github.com/anisse/collector/internal/fetch"
 	"github.com/anisse/collector/internal/logger"
 	"github.com/anisse/collector/internal/metrics"
+	"github.com/anisse/collector/internal/model"
 	"github.com/anisse/collector/internal/store"
 )
 
@@ -77,6 +79,20 @@ func main() {
 
 	storer := store.New(conn, log, m)
 
+	var clickhouseWriter *analytics.ClickHouseWriter
+	if cfg.ClickHouseDSN != "" {
+		writer, err := analytics.NewClickHouseWriter(ctx, cfg.ClickHouseDSN, log)
+		if err != nil {
+			log.Error().Err(err).Msg("clickhouse initialization failed, continuing without analytics sink")
+		} else {
+			clickhouseWriter = writer
+			defer func() {
+				_ = clickhouseWriter.Close()
+			}()
+			log.Info().Msg("clickhouse sink enabled")
+		}
+	}
+
 	// 7. Execute pipeline: fetch → validate → upsert.
 	log.Info().
 		Int("limit", cfg.Limit).
@@ -94,6 +110,24 @@ func main() {
 	stats, err := storer.UpsertProducts(ctx, products)
 	if err != nil {
 		log.Fatal().Err(err).Msg("upsert failed")
+	}
+
+	if clickhouseWriter != nil {
+		analyticsProducts := make([]model.Product, 0, len(products))
+		for _, p := range products {
+			normalized, _, ok := store.ValidateAndNormalize(p)
+			if !ok {
+				continue
+			}
+			analyticsProducts = append(analyticsProducts, normalized)
+		}
+
+		exported, err := clickhouseWriter.WriteProducts(ctx, analyticsProducts)
+		if err != nil {
+			log.Error().Err(err).Msg("clickhouse export failed")
+		} else {
+			log.Info().Int("rows", exported).Msg("clickhouse export complete")
+		}
 	}
 
 	// 8. Report.
