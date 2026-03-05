@@ -1,19 +1,25 @@
-.PHONY: run test lint migrate up down
+.PHONY: run test lint migrate up down demo docker-build ci-local
 
 # DSN par défaut pour le dev local
 DATABASE_URL ?= postgres://collector:collector@localhost:5434/collector?sslmode=disable
 
 ## Démarrer Postgres (sans docker-compose pour éviter les bugs v1)
 up:
-	docker run -d --name collector-pg -e POSTGRES_USER=collector -e POSTGRES_PASSWORD=collector -e POSTGRES_DB=collector -p 5434:5432 postgres:16-alpine
+	docker run -d --name collector-pg \
+		-e POSTGRES_USER=collector \
+		-e POSTGRES_PASSWORD=collector \
+		-e POSTGRES_DB=collector \
+		-p 5434:5432 \
+		postgres:16-alpine
 
 ## Arrêter Postgres
 down:
 	docker rm -f collector-pg
 
-## Appliquer la migration
+## Appliquer toutes les migrations
 migrate:
 	PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector -f migrations/001_init.sql
+	PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector -f migrations/002_quality.sql
 
 ## Lancer le collector
 run:
@@ -21,8 +27,26 @@ run:
 
 ## Lancer les tests
 test:
-	go test ./... -v
+	go test ./... -v -race -count=1
 
 ## Linter (nécessite golangci-lint)
 lint:
 	golangci-lint run ./...
+
+## Vérifier le code
+vet:
+	go vet ./...
+
+## Build Docker image
+docker-build:
+	docker build -t collector .
+
+## One-command demo: up → wait → migrate → run
+demo: up
+	@echo "⏳ Waiting for Postgres to start..."
+	@sleep 3
+	$(MAKE) migrate
+	$(MAKE) run
+
+## CI local: lint + vet + test
+ci-local: lint vet test

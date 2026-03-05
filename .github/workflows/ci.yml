@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: collector
+          POSTGRES_PASSWORD: collector
+          POSTGRES_DB: collector
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U collector"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Apply migrations
+        run: |
+          PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector -f migrations/001_init.sql
+          PGPASSWORD=collector psql -h localhost -p 5434 -U collector -d collector -f migrations/002_quality.sql
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://collector:collector@localhost:5434/collector?sslmode=disable
+        run: go test ./... -race -v -count=1
+
+      - name: Vet
+        run: go vet ./...
