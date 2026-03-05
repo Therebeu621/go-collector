@@ -12,7 +12,7 @@ Un collecteur de données écrit en Go qui récupère des produits depuis une AP
 - **Logs structurés** — sortie JSON via `zerolog` (mode pretty pour le dev local)
 - **Arrêt gracieux** — `SIGINT`/`SIGTERM` annule proprement le travail en cours
 - **Métriques Prometheus** — endpoint `/metrics` exposé sur `METRICS_ADDR`
-- **Dashboard Grafana auto-provisionné** — datasource + dashboard importés automatiquement au démarrage
+- **Dashboard Grafana auto-provisionné** — provisioning via `monitoring/grafana/` (datasource + dashboard) avec Docker Compose
 - **Sink ClickHouse optionnel** — export batch des produits vers ClickHouse si `CLICKHOUSE_DSN` est défini
 - **Support proxy** — standard `HTTP_PROXY`/`HTTPS_PROXY` via `http.ProxyFromEnvironment`
 - **Dockerisé** — build multi-stage, certificats CA, utilisateur non-root
@@ -55,7 +55,7 @@ Il ne prétend pas couvrir tout un contexte enterprise (multi-environnements, ge
 
 ## Prérequis
 
-- **Go** ≥ 1.24
+- **Go** 1.24.x (aligné sur `go.mod`)
 - **Docker** + Docker Compose (`docker compose` v2 ou `docker-compose` v1)
 - **psql** (client PostgreSQL)
 
@@ -142,6 +142,12 @@ Dashboard provisionné :
 | `METRICS_KEEP_ALIVE` | ❌ | `false` | Garde le process actif après la collecte (utile pour debug Grafana/Prometheus) |
 | `CLICKHOUSE_DSN` | ❌ | — | DSN HTTP ClickHouse (ex: `http://collector:collector@localhost:8123/default`) |
 
+## Sécurité et secrets
+
+- Aucun secret n'est versionné dans le dépôt.
+- Utiliser `.env.example` comme template local, puis des variables d'environnement réelles pour l'exécution.
+- En environnement conteneurisé, préférer des mécanismes dédiés (secrets Docker / variables d'environnement injectées par la plateforme).
+
 ## Exemple de sortie
 
 Première exécution (logs JSON structurés) :
@@ -166,6 +172,14 @@ Deuxième exécution (idempotence par checksum) :
 | `category` vide | Normalisé à `"unknown"` (warn) |
 | `price` > 10000 | Conservé avec `quality_status = "warn"` |
 | `stock` < 0 | Conservé avec `quality_status = "warn"` |
+
+## Idempotence SQL (checksum + UPSERT)
+
+Le collecteur calcule un checksum SHA-256 côté Go sur les champs significatifs d'un produit.
+L'écriture en base utilise `INSERT ... ON CONFLICT (id) DO UPDATE`.
+La clause `WHERE products.checksum IS DISTINCT FROM EXCLUDED.checksum` empêche les updates inutiles.
+Résultat : première exécution = inserts, exécutions suivantes = `skipped` si les données n'ont pas changé.
+Cette stratégie réduit les écritures PostgreSQL et stabilise les métriques `inserted/updated/skipped`.
 
 ## Tests
 
@@ -230,6 +244,12 @@ Pour utiliser `docker compose` v2 avec ces targets :
 ```bash
 make observability-up COMPOSE="docker compose"
 ```
+
+## Next Steps
+
+- Ajouter un circuit breaker côté HTTP client pour mieux protéger l'API upstream.
+- Introduire une DLQ (dead-letter queue) ou un stockage d'erreurs pour les cas non traitables.
+- Définir des SLO et des alertes (latence p95/p99, taux d'erreur, absence de scrape Prometheus).
 
 ## Vérifier les données
 
