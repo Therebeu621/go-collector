@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,10 +29,14 @@ func newTestServer(totalProducts int) *httptest.Server {
 		limit := 10
 		skip := 0
 		if v := q.Get("limit"); v != "" {
-			fmt.Sscanf(v, "%d", &limit)
+			if parsed, err := strconv.Atoi(v); err == nil {
+				limit = parsed
+			}
 		}
 		if v := q.Get("skip"); v != "" {
-			fmt.Sscanf(v, "%d", &skip)
+			if parsed, err := strconv.Atoi(v); err == nil {
+				skip = parsed
+			}
 		}
 
 		var products []model.Product
@@ -55,7 +60,10 @@ func newTestServer(totalProducts int) *httptest.Server {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}))
 }
 
@@ -117,7 +125,10 @@ func TestFetchAll_RetryOn429(t *testing.T) {
 			Total: 1,
 			Limit: 10,
 		}
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}))
 	defer ts.Close()
 
@@ -158,7 +169,9 @@ func TestFetchAll_ContextCancelled(t *testing.T) {
 func TestFetchAll_MalformedJSON(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("not json at all{{{"))
+		if _, err := w.Write([]byte("not json at all{{{")); err != nil {
+			return
+		}
 	}))
 	defer ts.Close()
 

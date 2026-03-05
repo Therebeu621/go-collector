@@ -48,7 +48,9 @@ func (s *Store) UpsertProducts(ctx context.Context, products []model.Product) (S
 	if err != nil {
 		return stats, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer tx.Rollback() // no-op after commit
+	defer func() {
+		_ = tx.Rollback() // no-op after commit
+	}()
 
 	const query = `
 		INSERT INTO products (id, title, brand, category, price, rating, stock,
