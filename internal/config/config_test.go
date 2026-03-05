@@ -15,7 +15,7 @@ func TestLoad_Defaults(t *testing.T) {
 	setEnv(t, "DATABASE_URL", "postgres://test:test@localhost/test")
 
 	// Clear optional vars to test defaults.
-	for _, k := range []string{"LIMIT", "WORKERS", "RATE_LIMIT", "REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FORMAT", "API_BASE_URL"} {
+	for _, k := range []string{"LIMIT", "PAGE_SIZE", "WORKERS", "RATE_LIMIT", "REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FORMAT", "API_BASE_URL"} {
 		os.Unsetenv(k)
 	}
 
@@ -26,6 +26,9 @@ func TestLoad_Defaults(t *testing.T) {
 
 	if cfg.Limit != 30 {
 		t.Errorf("Limit = %d, want 30", cfg.Limit)
+	}
+	if cfg.PageSize != 30 {
+		t.Errorf("PageSize = %d, want 30", cfg.PageSize)
 	}
 	if cfg.Workers != 4 {
 		t.Errorf("Workers = %d, want 4", cfg.Workers)
@@ -109,9 +112,33 @@ func TestLoad_InvalidRequestTimeout(t *testing.T) {
 	}
 }
 
+func TestLoad_InvalidPageSize(t *testing.T) {
+	setEnv(t, "DATABASE_URL", "postgres://test:test@localhost/test")
+
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{"negative", "-1"},
+		{"zero", "0"},
+		{"non-numeric", "xyz"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setEnv(t, "PAGE_SIZE", tt.value)
+			_, err := Load()
+			if err == nil {
+				t.Errorf("expected error for PAGE_SIZE=%q", tt.value)
+			}
+		})
+	}
+}
+
 func TestLoad_CustomValues(t *testing.T) {
 	setEnv(t, "DATABASE_URL", "postgres://custom:custom@db:5432/mydb")
 	setEnv(t, "LIMIT", "100")
+	setEnv(t, "PAGE_SIZE", "50")
 	setEnv(t, "WORKERS", "8")
 	setEnv(t, "RATE_LIMIT", "10")
 	setEnv(t, "REQUEST_TIMEOUT", "30s")
@@ -129,6 +156,9 @@ func TestLoad_CustomValues(t *testing.T) {
 	}
 	if cfg.Limit != 100 {
 		t.Errorf("Limit = %d, want 100", cfg.Limit)
+	}
+	if cfg.PageSize != 50 {
+		t.Errorf("PageSize = %d, want 50", cfg.PageSize)
 	}
 	if cfg.Workers != 8 {
 		t.Errorf("Workers = %d, want 8", cfg.Workers)
