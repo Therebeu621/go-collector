@@ -136,4 +136,10 @@ func main() {
 		Int("updated", stats.Updated).
 		Int("skipped", stats.Skipped).
 		Msg("collection complete")
+
+	if cfg.MetricsKeepAlive {
+		log.Info().Msg("metrics keep-alive enabled, waiting for termination signal")
+		<-ctx.Done()
+		log.Info().Msg("termination signal received, shutting down")
+	}
 }

@@ -110,8 +110,18 @@ Endpoints :
 - Grafana : `http://localhost:3000` (login par défaut `admin` / `admin`)
 - Credentials Grafana personnalisables via `.env` : `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
 
+Si tu lances le collector en local et veux garder `/metrics` actif après la collecte :
+
+```bash
+METRICS_KEEP_ALIVE=true make run
+```
+
 Dashboard provisionné :
 - `Collector Overview` (folder `Collector`)
+
+### Aperçu Grafana
+
+![Dashboard Grafana Collector](docs/images/grafana-dashboard.png)
 
 ## Variables d'environnement
 
@@ -129,6 +139,7 @@ Dashboard provisionné :
 | `HTTP_PROXY` | ❌ | — | URL du proxy HTTP |
 | `HTTPS_PROXY` | ❌ | — | URL du proxy HTTPS |
 | `METRICS_ADDR` | ❌ | `:9090` | Adresse du serveur de métriques Prometheus |
+| `METRICS_KEEP_ALIVE` | ❌ | `false` | Garde le process actif après la collecte (utile pour debug Grafana/Prometheus) |
 | `CLICKHOUSE_DSN` | ❌ | — | DSN HTTP ClickHouse (ex: `http://collector:collector@localhost:8123/default`) |
 
 ## Exemple de sortie

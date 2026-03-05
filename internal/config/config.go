@@ -10,34 +10,36 @@ import (
 
 // Config holds all collector configuration values.
 type Config struct {
-	DatabaseURL    string        // env: DATABASE_URL (required)
-	Limit          int           // env: LIMIT (default: 30) — max total products to fetch
-	PageSize       int           // env: PAGE_SIZE (default: 30) — products per API page
-	Workers        int           // env: WORKERS (default: 4)
-	RateLimit      int           // env: RATE_LIMIT (default: 5 requests/sec)
-	RequestTimeout time.Duration // env: REQUEST_TIMEOUT (default: 10s)
-	LogLevel       string        // env: LOG_LEVEL (default: "info")
-	LogFormat      string        // env: LOG_FORMAT (default: "json", alt: "pretty")
-	APIBaseURL     string        // env: API_BASE_URL (default: "https://dummyjson.com/products")
-	MetricsAddr    string        // env: METRICS_ADDR (default: ":9090")
-	ClickHouseDSN  string        // env: CLICKHOUSE_DSN (optional, HTTP DSN)
+	DatabaseURL      string        // env: DATABASE_URL (required)
+	Limit            int           // env: LIMIT (default: 30) - max total products to fetch
+	PageSize         int           // env: PAGE_SIZE (default: 30) - products per API page
+	Workers          int           // env: WORKERS (default: 4)
+	RateLimit        int           // env: RATE_LIMIT (default: 5 requests/sec)
+	RequestTimeout   time.Duration // env: REQUEST_TIMEOUT (default: 10s)
+	LogLevel         string        // env: LOG_LEVEL (default: "info")
+	LogFormat        string        // env: LOG_FORMAT (default: "json", alt: "pretty")
+	APIBaseURL       string        // env: API_BASE_URL (default: "https://dummyjson.com/products")
+	MetricsAddr      string        // env: METRICS_ADDR (default: ":9090")
+	MetricsKeepAlive bool          // env: METRICS_KEEP_ALIVE (default: false)
+	ClickHouseDSN    string        // env: CLICKHOUSE_DSN (optional, HTTP DSN)
 }
 
 // Load reads configuration from environment variables, applies defaults,
 // and validates required fields.
 func Load() (Config, error) {
 	cfg := Config{
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		Limit:          30,
-		PageSize:       30,
-		Workers:        4,
-		RateLimit:      5,
-		RequestTimeout: 10 * time.Second,
-		LogLevel:       "info",
-		LogFormat:      "json",
-		APIBaseURL:     "https://dummyjson.com/products",
-		MetricsAddr:    ":9090",
-		ClickHouseDSN:  "",
+		DatabaseURL:      os.Getenv("DATABASE_URL"),
+		Limit:            30,
+		PageSize:         30,
+		Workers:          4,
+		RateLimit:        5,
+		RequestTimeout:   10 * time.Second,
+		LogLevel:         "info",
+		LogFormat:        "json",
+		APIBaseURL:       "https://dummyjson.com/products",
+		MetricsAddr:      ":9090",
+		MetricsKeepAlive: false,
+		ClickHouseDSN:    "",
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -101,6 +103,14 @@ func Load() (Config, error) {
 
 	if v := os.Getenv("METRICS_ADDR"); v != "" {
 		cfg.MetricsAddr = v
+	}
+
+	if v := os.Getenv("METRICS_KEEP_ALIVE"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("METRICS_KEEP_ALIVE must be a boolean (true/false), got %q", v)
+		}
+		cfg.MetricsKeepAlive = b
 	}
 
 	if v := os.Getenv("CLICKHOUSE_DSN"); v != "" {
